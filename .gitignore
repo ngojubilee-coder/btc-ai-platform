@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+.env.local
+.env
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/*.parquet
+.open-next/
+.wrangler/
+package-lock.json

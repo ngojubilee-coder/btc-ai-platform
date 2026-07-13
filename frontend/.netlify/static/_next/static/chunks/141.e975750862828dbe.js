@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_N_E=self.webpackChunk_N_E||[]).push([[141],{2141:function(e,u,s){s.d(u,{supabase:function(){return n}});let n=(0,s(40434).eI)("https://your-project.supabase.co","your-anon-key")}}]);

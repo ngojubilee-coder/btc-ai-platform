@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: btc-ai-platform-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 4
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGINS
+        value: "https://btc-ai-platform.jubilee-israel1.workers.dev"
+      - key: DATA_DIR
+        value: "./data"
+      - key: PARQUET_PATH
+        value: "./data/btc_enriched_dataset_1m.parquet"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "8000"
