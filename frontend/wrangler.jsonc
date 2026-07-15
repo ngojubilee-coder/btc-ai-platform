@@ -7,7 +7,7 @@
     "directory": ".open-next/assets"
   },
   "vars": {
-    "NEXT_PUBLIC_API_URL": "http://127.0.0.1:8000",
+    "NEXT_PUBLIC_API_URL": "https://btc-ai-backend-production.up.railway.app",
     "NEXT_PUBLIC_SUPABASE_URL": "https://your-project.supabase.co",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "your-anon-key"
   }
