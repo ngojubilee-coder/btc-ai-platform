@@ -20,3 +20,4 @@ data/training_log.txt
 .wrangler/
 package-lock.json
 backups/
+.netlify/

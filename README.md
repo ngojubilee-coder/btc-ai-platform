@@ -13,7 +13,8 @@ btc-ai-platform/
 │   │   ├── chat.py          # Chatbot (SSE streaming)
 │   │   ├── data.py          # Dataset (DuckDB + Parquet)
 │   │   ├── news.py          # Actualités
-│   │   └── models.py        # Modèles ML
+│   │   ├── models.py        # Modèles ML
+│   │   └── training.py      # API training (status, results, models)
 │   ├── core/                # Logique métier
 │   │   ├── config.py        # Configuration
 │   │   ├── llm.py           # LLM Router (Gemini/Claude/Ollama)
@@ -28,6 +29,9 @@ btc-ai-platform/
 │   ├── services/            # Services
 │   │   ├── news_service.py  # RSS + CryptoCompare + correlation
 │   │   └── reports.py       # Génération rapports HTML/PDF
+│   ├── train.py             # Pipeline d'entrainement (XGBoost, RF, LSTM)
+│   ├── download_data.py     # Generation dataset BTC (synthetique + yfinance)
+│   ├── tests/               # 104 tests unitaires (pytest)
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── .env.example
@@ -37,6 +41,11 @@ btc-ai-platform/
 │   │   ├── page.tsx         # Redirect → /dashboard
 │   │   ├── login/           # Page de connexion
 │   │   ├── dashboard/       # Dashboard (stats dataset)
+│   │   │   ├── data/        # Explorateur de données
+│   │   │   ├── chart/       # Chart TradingView
+│   │   │   ├── correlations/ # Corrélations features
+│   │   │   ├── whales/      # Tracking whales
+│   │   │   └── training/    # Entrainement ML + résultats
 │   │   ├── chat/            # Chatbot (streaming + markdown)
 │   │   ├── news/            # Actualités (filtres par type)
 │   │   ├── models/          # Gestion des modèles
@@ -54,7 +63,10 @@ btc-ai-platform/
 │   ├── tailwind.config.ts
 │   ├── next.config.js
 │   └── Dockerfile
-├── data/                    # Parquet files (monté depuis Drive/S3)
+├── data/                    # Dataset Parquet + models + results
+├── *.bat                    # 11 scripts VPS Windows (install, start, stop, train...)
+├── VPS-README.md            # Documentation VPS Windows
+├── render.yaml              # Deploy Render (backend)
 ├── docker-compose.yml       # Dev local
 └── README.md
 ```
@@ -105,19 +117,23 @@ docker-compose up
 
 Exécuter `backend/db/schema.sql` dans Supabase SQL Editor.
 
-## Fonctionnalités MVP
+## Fonctionnalités
 
 - **Chatbot IA** — dialoguer avec le dataset (stats, schema, corrélations, sample)
 - **Dashboard** — vue d'ensemble du dataset (lignes, colonnes, features, targets)
 - **Actualités** — fetch RSS + CryptoCompare, filtre par type, corrélation prix
 - **Modèles** — lister, comparer, voir métriques et features
+- **Entrainement ML** — XGBoost, Random Forest, LSTM + backtesting + comparaison CSV
+- **Whales** — tracking wallets baleine (213+ wallets)
 - **Auth** — login/inscription via Supabase
-- **Rapports** — génération HTML/PDF (à connecter)
+- **Rapports** — génération HTML/PDF
 - **Settings** — configuration LLM, notifications, sécurité
+- **VPS Windows** — 11 scripts .bat pour deploiement autonome
+- **Tests** — 104 tests unitaires (pytest)
 
 ## Roadmap
 
 - **MVP** ✅ — Chatbot + dashboard + news + auth
-- **V1** — Model management + training pipeline + backtests + rapports auto
+- **V1** ✅ — Model management + training pipeline + backtests + rapports
 - **V2** — Multi-asset (ETH, SOL) + real-time + alertes IA + feature store
 - **V3** — Fine-tuning + agent autonome + voice + mobile
