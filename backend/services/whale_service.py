@@ -7,7 +7,7 @@ from core.logging_config import logger
 
 WHALE_CSV_PATH = os.getenv(
     "WHALE_WALLETS_CSV",
-    str(Path(__file__).resolve().parent.parent.parent.parent / "whale_system" / "whale_wallets_list.csv"),
+    str(Path(__file__).resolve().parent.parent.parent / "data" / "whale_wallets_list.csv"),
 )
 
 _wallets_cache: list[dict] | None = None

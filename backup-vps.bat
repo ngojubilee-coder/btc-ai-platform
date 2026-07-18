@@ -45,6 +45,11 @@ if exist "%ROOT%data\btc_enriched_dataset_1m.parquet" (
     echo  [OK] data/btc_enriched_dataset_1m.parquet
 )
 
+if exist "%ROOT%data\whale_wallets_list.csv" (
+    copy "%ROOT%data\whale_wallets_list.csv" "%BACKUP_PATH%\" >nul
+    echo  [OK] data/whale_wallets_list.csv
+)
+
 if exist "%ROOT%frontend\wrangler.jsonc" (
     copy "%ROOT%frontend\wrangler.jsonc" "%BACKUP_PATH%\" >nul
     echo  [OK] frontend/wrangler.jsonc
