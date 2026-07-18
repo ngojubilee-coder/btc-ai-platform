@@ -82,6 +82,11 @@ if %errorLevel% neq 0 (
 )
 echo      Dependances Python installees
 
+:: ─── 4b. Dependances d'entrainement ───
+echo  [4b/8] Installation des dependances d'entrainement...
+pip install xgboost scikit-learn --quiet 2>nul
+echo      xgboost + scikit-learn installes
+
 :: ─── 5. Installation des dependances Node.js ───
 echo  [5/8] Installation des dependances Node.js (frontend)...
 cd /d "%ROOT%frontend"
@@ -148,6 +153,21 @@ echo  [8/8] Verification des tests backend...
 cd /d "%ROOT%backend"
 call .venv\Scripts\activate.bat
 python -m pytest tests/ -v --tb=short 2>&1 | findstr /C:"passed" /C:"failed" /C:"error"
+
+:: ─── 9. Verification des imports critiques ───
+echo  [9/9] Verification des imports Python...
+python -c "import fastapi; import uvicorn; import duckdb; import pandas; import xgboost; import sklearn; print('  Tous les imports OK')" 2>nul
+if %errorLevel% neq 0 (
+    echo  [!] Certains imports ont echoue. Verifiez l'installation.
+)
+
+:: ─── 10. Verification du dataset ───
+echo  [10/10] Verification du dataset...
+if exist "%ROOT%data\btc_enriched_dataset_1m.parquet" (
+    echo      Dataset present
+) else (
+    echo      Dataset absent - lancez prepare-data.bat pour le generer
+)
 
 :: ─── Resume ───
 echo.

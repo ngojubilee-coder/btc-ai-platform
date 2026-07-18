@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bitcoin, LayoutDashboard, MessageSquare, Newspaper, BarChart3, FileText, Settings, CandlestickChart, LogOut, TrendingUp, Menu, X, Database, Waves, Globe } from "lucide-react";
+import { Bitcoin, LayoutDashboard, MessageSquare, Newspaper, BarChart3, FileText, Settings, CandlestickChart, LogOut, TrendingUp, Menu, X, Database, Waves, Globe, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/auth-provider";
 import { useI18n } from "@/lib/i18n";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard/chart", key: "nav.chart", icon: CandlestickChart },
   { href: "/dashboard/correlations", key: "nav.correlations", icon: TrendingUp },
   { href: "/dashboard/whales", key: "nav.whales", icon: Waves },
+  { href: "/dashboard/training", key: "Entrainement", icon: Cpu },
   { href: "/chat", key: "nav.chat", icon: MessageSquare },
   { href: "/news", key: "nav.news", icon: Newspaper },
   { href: "/models", key: "nav.models", icon: BarChart3 },

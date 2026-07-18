@@ -9,10 +9,16 @@ Utilisation:
     python train.py --backtest         # Backtest apres entrainement
 """
 import argparse
+import io
 import json
 import os
 import sys
 import time
+
+# Forcer UTF-8 sur Windows pour les caracteres Unicode
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 from datetime import datetime
 from pathlib import Path
 
@@ -325,6 +331,8 @@ def main():
                         help="Lancer un backtest apres l'entrainement")
     parser.add_argument("--list", action="store_true",
                         help="Lister les modeles disponibles")
+    parser.add_argument("--compare", action="store_true",
+                        help="Entrainer tous les modeles et comparer")
     args = parser.parse_args()
 
     if args.list:
@@ -344,6 +352,7 @@ def main():
         sys.exit(1)
     df, feature_cols, target_cols = result
 
+    # 1b. Verifier la target
     if args.target not in target_cols:
         log(f"Target '{args.target}' non trouvee. Targets disponibles: {target_cols}", "ERR")
         sys.exit(1)
@@ -351,7 +360,52 @@ def main():
     # 2. Preparer les donnees
     X_train, X_test, y_train, y_test = prepare_data(df, feature_cols, target_col=args.target)
 
-    # 3. Entrainement
+    # Mode comparaison: entrainer tous les modeles
+    if args.compare:
+        log("Mode comparaison: entrainement de tous les modeles")
+        all_metrics = []
+        for model_name in ["xgboost", "random_forest", "lstm"]:
+            print(f"\n  --- {model_name.upper()} ---")
+            try:
+                if model_name == "xgboost":
+                    m, _ = train_xgboost(X_train, X_test, y_train, y_test)
+                elif model_name == "random_forest":
+                    m, _ = train_random_forest(X_train, X_test, y_train, y_test)
+                elif model_name == "lstm":
+                    m, _ = train_lstm(X_train, X_test, y_train, y_test)
+                m["backtest"] = run_backtest(_, X_test, y_test, model_type=model_name) if args.backtest else None
+                all_metrics.append(m)
+                save_results(m, m.get("backtest"))
+            except Exception as e:
+                log(f"Erreur avec {model_name}: {e}", "ERR")
+                all_metrics.append({"model": model_name, "error": str(e)})
+
+        # Sauvegarder le tableau comparatif en CSV
+        results_dir = os.path.join(DATA_DIR, "results")
+        os.makedirs(results_dir, exist_ok=True)
+        csv_path = os.path.join(results_dir, f"comparison_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+        import csv as csv_mod
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv_mod.DictWriter(f, fieldnames=["model", "accuracy", "f1", "precision", "recall", "train_time_sec"])
+            writer.writeheader()
+            for m in all_metrics:
+                if "error" not in m:
+                    writer.writerow({k: m.get(k, "") for k in ["model", "accuracy", "f1", "precision", "recall", "train_time_sec"]})
+        log(f"Tableau comparatif sauvegarde: {csv_path}", "OK")
+
+        # Afficher le tableau
+        print("\n  ╔══════════════════════════════════════════════════════╗")
+        print("  ║     COMPARAISON DES MODELES                          ║")
+        print("  ╠══════════════════════════════════════════════════════╣")
+        print(f"  ║  {'Modele':<16} {'Accuracy':<10} {'F1':<10} {'Temps':<10}  ║")
+        print("  ╠══════════════════════════════════════════════════════╣")
+        for m in all_metrics:
+            if "error" not in m:
+                print(f"  ║  {m['model']:<16} {m.get('accuracy', 0):<10.4f} {m.get('f1', 0):<10.4f} {m.get('train_time_sec', 0):<10.1f}  ║")
+        print("  ╚══════════════════════════════════════════════════════╝\n")
+        return
+
+    # 3. Entrainement single model
     log(f"Demarrage de l'entrainement: {args.model}")
     print()
 
