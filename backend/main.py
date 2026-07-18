@@ -13,6 +13,7 @@ from api.data import router as data_router
 from api.news import router as news_router
 from api.models import router as models_router
 from api.whales import router as whales_router
+from api.training import router as training_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -60,6 +61,7 @@ app.include_router(data_router, prefix="/api")
 app.include_router(news_router, prefix="/api")
 app.include_router(models_router, prefix="/api")
 app.include_router(whales_router, prefix="/api")
+app.include_router(training_router, prefix="/api")
 
 
 @app.get("/")
@@ -91,6 +93,10 @@ async def root():
             "/api/whales/stats",
             "/api/whales/top",
             "/api/whales/search",
+            "/api/training/status",
+            "/api/training/results",
+            "/api/training/models",
+            "/api/training/comparisons",
             "/health",
         ],
     }

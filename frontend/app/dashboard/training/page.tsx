@@ -23,19 +23,31 @@ interface ModelResult {
   top_features?: Record<string, number>;
 }
 
+interface TrainingStatus {
+  dataset: { exists: boolean; size_mb: number; path: string };
+  models: { count: number; files: string[] };
+  results: { count: number; csv_count: number; last: any };
+}
+
 export default function TrainingPage() {
   const [results, setResults] = useState<ModelResult[]>([]);
+  const [status, setStatus] = useState<TrainingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [training, setTraining] = useState(false);
   const [health, setHealth] = useState<any>(null);
-  const [trainResult, setTrainResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchResults = useCallback(async () => {
     setLoading(true);
     try {
-      const h = await apiFetch<any>("/health").catch(() => null);
+      const [h, s, r] = await Promise.all([
+        apiFetch<any>("/health").catch(() => null),
+        apiFetch<any>("/api/training/status").catch(() => null),
+        apiFetch<any>("/api/training/results?limit=10").catch(() => null),
+      ]);
       setHealth(h);
+      setStatus(s);
+      setResults(r?.results || []);
     } catch {}
     setLoading(false);
   }, []);
@@ -47,13 +59,12 @@ export default function TrainingPage() {
   const startTraining = async (model: string) => {
     setTraining(true);
     setError(null);
-    setTrainResult(null);
     try {
-      const r = await apiFetch<any>(`/api/models/reports/generate`, {
+      await apiFetch<any>(`/api/models/reports/generate`, {
         method: "POST",
         body: JSON.stringify({ type: "training", lang: "fr" }),
       });
-      setTrainResult(r);
+      fetchResults();
     } catch (err: any) {
       setError(err.message);
     }
@@ -112,7 +123,7 @@ export default function TrainingPage() {
             <span className="text-sm text-muted-foreground">Dataset</span>
           </div>
           <p className="text-xl font-bold text-foreground">{datasetRows.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">lignes</p>
+          <p className="text-xs text-muted-foreground">{status?.dataset?.size_mb || 0} MB</p>
           <Badge variant={duckdbOk ? "success" : "destructive"} className="mt-2">
             {duckdbOk ? "OK" : "Absent"}
           </Badge>
@@ -121,21 +132,24 @@ export default function TrainingPage() {
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Cpu className="h-4 w-4 text-purple-400" />
-            <span className="text-sm text-muted-foreground">Gemini LLM</span>
+            <span className="text-sm text-muted-foreground">Modeles sauves</span>
           </div>
-          <p className="text-xl font-bold text-foreground">{llmInfo.gemini ? "Actif" : "Inactif"}</p>
-          <Badge variant={llmInfo.gemini ? "success" : "destructive"} className="mt-2">
-            {llmInfo.gemini ? "OK" : "Off"}
-          </Badge>
+          <p className="text-xl font-bold text-foreground">{status?.models?.count || 0}</p>
+          <p className="text-xs text-muted-foreground">fichiers</p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {(status?.models?.files || []).map((f: string) => (
+              <Badge key={f} variant="outline" className="text-xs">{f}</Badge>
+            ))}
+          </div>
         </Card>
 
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="h-4 w-4 text-orange-400" />
-            <span className="text-sm text-muted-foreground">Whale DB</span>
+            <span className="text-sm text-muted-foreground">Resultats</span>
           </div>
-          <p className="text-xl font-bold text-foreground">{components.whales?.total_wallets || 0}</p>
-          <p className="text-xs text-muted-foreground">wallets</p>
+          <p className="text-xl font-bold text-foreground">{status?.results?.count || 0}</p>
+          <p className="text-xs text-muted-foreground">{status?.results?.csv_count || 0} comparaisons CSV</p>
         </Card>
 
         <Card className="p-4">
@@ -187,11 +201,6 @@ export default function TrainingPage() {
           {error && (
             <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
               {error}
-            </div>
-          )}
-          {trainResult && (
-            <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-sm text-green-400">
-              Rapport genere: {trainResult.title || "OK"}
             </div>
           )}
           <div className="mt-4 p-3 rounded-lg bg-secondary/50 text-xs text-muted-foreground">

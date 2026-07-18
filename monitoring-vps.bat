@@ -1,47 +1,42 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 >nul 2>&1
 title BTC AI Platform - Monitoring
 color 0B
 
 echo.
-echo  ╔══════════════════════════════════════════════════════╗
-echo  ║     BTC AI PLATFORM - MONITORING SYSTEME              ║
-echo  ╚══════════════════════════════════════════════════════╝
+echo  === BTC AI PLATFORM - MONITORING SYSTEME ===
 echo.
 
 set "ROOT=%~dp0"
 cd /d "%ROOT%"
 
-:: ─── Systeme ───
 echo  === SYSTEME ===
 echo  Date: %date% %time%
 echo  OS: %OS%
 echo  Architecture: %PROCESSOR_ARCHITECTURE%
 echo.
 
-:: ─── Ports ───
 echo  === PORTS ===
 netstat -ano | findstr ":3000.*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo  Port 3000 [Frontend]: OCCUPE - en cours d'execution
+    echo  Port 3000 [Frontend]: OCCUPE - en cours d execution
 ) else (
     echo  Port 3000 [Frontend]: LIBRE
 )
 netstat -ano | findstr ":8000.*LISTENING" >nul 2>&1
 if %errorLevel% equ 0 (
-    echo  Port 8000 [Backend]:  OCCUPE - en cours d'execution
+    echo  Port 8000 [Backend]:  OCCUPE - en cours d execution
 ) else (
     echo  Port 8000 [Backend]:  LIBRE
 )
 echo.
 
-:: ─── Disk ───
 echo  === DISQUE ===
 for /f "tokens=3" %%a in ('dir /-c "%ROOT%" ^| findstr "bytes free"') do set "FREESPACE=%%a"
 echo  Espace libre: %FREESPACE% bytes
 echo.
 
-:: ─── Dataset ───
 echo  === DATASET ===
 if exist "%ROOT%data\btc_enriched_dataset_1m.parquet" (
     for %%F in ("%ROOT%data\btc_enriched_dataset_1m.parquet") do (
@@ -54,7 +49,6 @@ if exist "%ROOT%data\btc_enriched_dataset_1m.parquet" (
 )
 echo.
 
-:: ─── Modeles ───
 echo  === MODELES ===
 if exist "%ROOT%data\models" (
     dir /b "%ROOT%data\models\" 2>nul
@@ -63,8 +57,7 @@ if exist "%ROOT%data\models" (
 )
 echo.
 
-:: ─── Resultats ───
-echo  === RESULTATS D'ENTRAINEMENT ===
+echo  === RESULTATS D ENTRAINEMENT ===
 if exist "%ROOT%data\results" (
     dir /b /o-d "%ROOT%data\results\" 2>nul
 ) else (
@@ -72,12 +65,11 @@ if exist "%ROOT%data\results" (
 )
 echo.
 
-:: ─── Python ───
 echo  === PYTHON ===
 where python >nul 2>&1
 if %errorLevel% equ 0 (
     python --version 2>nul
-    echo  venv: 
+    echo  venv:
     if exist "%ROOT%backend\.venv\Scripts\activate.bat" (
         echo    Present
     ) else (
@@ -88,7 +80,6 @@ if %errorLevel% equ 0 (
 )
 echo.
 
-:: ─── Node.js ───
 echo  === NODE.JS ===
 where node >nul 2>&1
 if %errorLevel% equ 0 (
@@ -104,7 +95,6 @@ if %errorLevel% equ 0 (
 )
 echo.
 
-:: ─── Configuration ───
 echo  === CONFIGURATION ===
 if exist "%ROOT%backend\.env" (
     echo  backend/.env: Present
@@ -118,8 +108,8 @@ if exist "%ROOT%frontend\.env.local" (
 )
 echo.
 
-echo  ══════════════════════════════════════════════════════
+echo  ========================================
 echo  Monitoring termine.
-echo  ══════════════════════════════════════════════════════
+echo  ========================================
 echo.
 pause
