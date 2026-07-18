@@ -31,16 +31,16 @@ if %errorLevel% neq 0 (
 )
 
 :: Menu de selection
-echo.
 echo  Selectionnez le modele a entrainer:
 echo    1. XGBoost (recommande - rapide et performant)
 echo    2. Random Forest (robuste)
 echo    3. LSTM Deep Learning (TensorFlow - lent)
-echo    4. Tous les modeles (comparaison)
+echo    4. Comparaison tous modeles + CSV
 echo    5. Lister les modeles disponibles
+echo    6. Verifier le dataset
 echo.
 
-set /p choice="Votre choix (1-5): "
+set /p choice="Votre choix (1-6): "
 
 if "%choice%"=="1" (
     echo.
@@ -53,16 +53,12 @@ if "%choice%"=="1" (
     python train.py --model lstm --backtest
 ) else if "%choice%"=="4" (
     echo.
-    echo  === Entrainement XGBoost ===
-    python train.py --model xgboost --backtest
-    echo.
-    echo  === Entrainement Random Forest ===
-    python train.py --model random_forest --backtest
-    echo.
-    echo  === Entrainement LSTM ===
-    python train.py --model lstm --backtest
+    python train.py --compare --backtest
 ) else if "%choice%"=="5" (
     python train.py --list
+) else if "%choice%"=="6" (
+    echo.
+    python download_data.py --rows 100000
 ) else (
     echo  Choix invalide.
 )

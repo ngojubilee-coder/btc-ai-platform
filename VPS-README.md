@@ -15,8 +15,10 @@
 | `install-vps.bat` | Installation complete (Python, Node, deps, venv, .env) |
 | `start-vps.bat` | Demarre backend (8000) + frontend (3000) |
 | `stop-vps.bat` | Arrete tous les services |
-| `train-vps.bat` | Menu d'entrainement (XGBoost, Random Forest, LSTM) |
+| `train-vps.bat` | Menu d'entrainement (XGBoost, RF, LSTM, Comparaison) |
 | `prepare-data.bat` | Genere le dataset BTC synthetique |
+| `health-check-vps.bat` | Verifie backend, frontend, API, dataset, modeles |
+| `monitoring-vps.bat` | Statut systeme: ports, disque, config, modeles |
 
 ## URLs locales
 
@@ -38,7 +40,9 @@ cd backend
 python train.py --model xgboost --backtest
 python train.py --model random_forest --backtest
 python train.py --model lstm --backtest
+python train.py --compare --backtest       # Comparer tous les modeles + CSV
 python train.py --list                    # Lister les modeles
+python train.py --target target_return_5m  # Changer la target
 ```
 
 ### Modeles disponibles
@@ -74,24 +78,34 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ```
 btc-ai-platform/
-  install-vps.bat          :: Installation
-  start-vps.bat            :: Demarrage
-  stop-vps.bat             :: Arret
-  train-vps.bat            :: Entrainement
-  prepare-data.bat         :: Donnees
+  install-vps.bat          :: Installation complete
+  start-vps.bat            :: Demarrage backend + frontend
+  stop-vps.bat             :: Arret des services
+  train-vps.bat            :: Menu d'entrainement
+  prepare-data.bat         :: Generation dataset
+  health-check-vps.bat     :: Verification systeme
+  monitoring-vps.bat       :: Monitoring complet
   backend/
-    train.py               :: Pipeline d'entrainement
-    download_data.py       :: Generation dataset
+    train.py               :: Pipeline d'entrainement (--compare, --backtest)
+    download_data.py       :: Generation dataset BTC
     main.py                :: API FastAPI
-    requirements.txt
+    requirements.txt       :: Deps Python (incluant xgboost, sklearn)
     .env                   :: Configuration
   frontend/
     package.json
     .env.local             :: URL du backend
+    app/dashboard/training/ :: Page dashboard entrainement
   data/
     btc_enriched_dataset_1m.parquet  :: Dataset
-    models/                :: Modeles sauvegardes
-    results/               :: Resultats d'entrainement
+    models/                :: Modeles sauvegardes (.json, .keras)
+    results/               :: Resultats JSON + CSV comparaison
+```
+
+## Verification systeme
+
+```bat
+health-check-vps.bat    :: Verifie backend, frontend, API, dataset, modeles
+monitoring-vps.bat      :: Statut complet: ports, disque, config, Python, Node
 ```
 
 ## Deploiement Cloudflare (optionnel)
