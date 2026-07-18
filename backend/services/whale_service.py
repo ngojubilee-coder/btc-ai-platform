@@ -2,7 +2,6 @@
 import csv
 import os
 from pathlib import Path
-from typing import Optional
 from core.logging_config import logger
 
 WHALE_CSV_PATH = os.getenv(

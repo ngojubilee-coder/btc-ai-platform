@@ -281,7 +281,7 @@ def run_backtest(model, X_test, y_test, model_type="xgboost"):
         if y_pred[i] == 1:  # On achete
             pnl += 1 if returns[i] == 1 else -1
 
-    log(f"Backterm Resultats:", "OK")
+    log(f"Backtest Resultats:", "OK")
     log(f"  Win rate: {win_rate:.2f}%", "OK")
     log(f"  Trades gagnants: {correct}/{total}", "OK")
     log(f"  PnL simule: {pnl:+d} (unites)", "OK")
@@ -313,7 +313,7 @@ def save_results(metrics, backtest=None):
     }
 
     filepath = os.path.join(results_dir, f"train_{metrics['model']}_{timestamp}.json")
-    with open(filepath, "w") as f:
+    with open(filepath, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2)
 
     log(f"Resultats sauvegardes: {filepath}", "OK")

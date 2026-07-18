@@ -2,7 +2,7 @@
 import asyncio
 import feedparser
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from core.config import settings
 from core.logging_config import logger
 from core.rag import rag_engine
@@ -52,7 +52,7 @@ async def fetch_rss_news(limit_per_feed: int = 20) -> list[dict]:
                 if published:
                     dt = datetime(*published[:6])
                 else:
-                    dt = datetime.utcnow()
+                    dt = datetime.now(timezone.utc)
 
                 event_type = classify_event(title, summary)
                 all_news.append({
@@ -133,7 +133,7 @@ async def fetch_newsapi_news(limit: int = 50) -> list[dict]:
                         "source": item.get("source", {}).get("name", "NewsAPI"),
                         "event_type": event_type,
                         "url": item.get("url", ""),
-                        "event_date": item.get("publishedAt", datetime.utcnow().isoformat()),
+                        "event_date": item.get("publishedAt", datetime.now(timezone.utc).isoformat()),
                     })
                 return news
     except Exception as e:

@@ -1,13 +1,10 @@
 """Report generation service — PDF and HTML reports."""
-import json
-from datetime import datetime
-from pathlib import Path
-from core.config import settings
+from datetime import datetime, timezone
 
 
 def generate_html_report(title: str, content: str, metadata: dict = None) -> str:
     """Generate an HTML report from markdown content."""
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     meta_html = ""
     if metadata:
         meta_html = "<table class='meta'>"
@@ -82,5 +79,5 @@ def generate_model_comparison_report(runs: list[dict]) -> str:
     return generate_html_report(
         "Rapport de comparaison des modèles",
         content,
-        {"Date": datetime.utcnow().isoformat(), "Nombre de modèles": str(len(runs))}
+        {"Date": datetime.now(timezone.utc).isoformat(), "Nombre de modèles": str(len(runs))}
     )
