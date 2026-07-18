@@ -11,6 +11,11 @@ __pycache__/
 .venv/
 venv/
 data/*.parquet
+data/models/*
+!data/models/.gitkeep
+data/results/*
+!data/results/.gitkeep
+data/training_log.txt
 .open-next/
 .wrangler/
 package-lock.json

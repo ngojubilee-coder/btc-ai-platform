@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiFetch, apiPost } from "@/lib/api";
 import { Newspaper, RefreshCw, Search, TrendingUp, TrendingDown, ExternalLink, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -38,7 +38,7 @@ export default function NewsPage() {
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
-  async function loadNews() {
+  const loadNews = useCallback(async () => {
     setLoading(true);
     try {
       const limit = pageSize;
@@ -50,7 +50,7 @@ export default function NewsPage() {
       setNews([]);
     }
     setLoading(false);
-  }
+  }, [page, filterType, pageSize]);
 
   async function loadCorrelations() {
     try {
@@ -80,7 +80,7 @@ export default function NewsPage() {
 
   useEffect(() => {
     loadNews();
-  }, [page, filterType]);
+  }, [loadNews]);
 
   return (
     <div className="space-y-6">

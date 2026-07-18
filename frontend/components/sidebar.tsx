@@ -14,7 +14,7 @@ const navItems = [
   { href: "/dashboard/chart", key: "nav.chart", icon: CandlestickChart },
   { href: "/dashboard/correlations", key: "nav.correlations", icon: TrendingUp },
   { href: "/dashboard/whales", key: "nav.whales", icon: Waves },
-  { href: "/dashboard/training", key: "Entrainement", icon: Cpu },
+  { href: "/dashboard/training", key: "nav.training", icon: Cpu },
   { href: "/chat", key: "nav.chat", icon: MessageSquare },
   { href: "/news", key: "nav.news", icon: Newspaper },
   { href: "/models", key: "nav.models", icon: BarChart3 },
