@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { useDebounce } from "@/lib/hooks";
 import { Table, Search, ChevronLeft, ChevronRight, Database, Clock, BarChart3, X } from "lucide-react";
@@ -47,11 +47,7 @@ export default function DataExplorerPage() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => {
-    loadRows();
-  }, [page, pageSize, searchCol, debouncedSearchVal, mode]);
-
-  async function loadRows() {
+  const loadRows = useCallback(async () => {
     setLoading(true);
     try {
       let query: string;
@@ -68,7 +64,11 @@ export default function DataExplorerPage() {
       setRows([]);
     }
     setLoading(false);
-  }
+  }, [mode, timeStart, timeEnd, searchCol, debouncedSearchVal, pageSize, page]);
+
+  useEffect(() => {
+    loadRows();
+  }, [loadRows]);
 
   async function loadColStats(col: string) {
     if (!col) return;

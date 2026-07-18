@@ -127,10 +127,29 @@ def main():
             btc = yf.download("BTC-USD", period="2y", interval="1m")
             if len(btc) > 0:
                 print(f"  Donnees telechargees: {len(btc)} lignes")
-                # TODO: enrichir avec les indicateurs
+                # Enrichir avec les indicateurs techniques
+                if "Close" in btc.columns:
+                    btc = btc.rename(columns={"Close": "price_close", "Open": "price_open", "High": "price_high", "Low": "price_low", "Volume": "volume"})
+                for window in [7, 14, 30, 60, 120]:
+                    btc[f"sma_{window}"] = btc["price_close"].rolling(window).mean()
+                    btc[f"ema_{window}"] = btc["price_close"].ewm(span=window).mean()
+                delta = btc["price_close"].diff()
+                gain = delta.clip(lower=0).rolling(14).mean()
+                loss = (-delta.clip(upper=0)).rolling(14).mean()
+                rs = gain / (loss + 1e-10)
+                btc["rsi_14"] = 100 - (100 / (1 + rs))
+                ema_12 = btc["price_close"].ewm(span=12).mean()
+                ema_26 = btc["price_close"].ewm(span=26).mean()
+                btc["macd"] = ema_12 - ema_26
+                btc["macd_signal"] = btc["macd"].ewm(span=9).mean()
+                btc["macd_hist"] = btc["macd"] - btc["macd_signal"]
+                for horizon in [5, 15, 30, 60]:
+                    btc[f"target_return_{horizon}m"] = btc["price_close"].shift(-horizon) / btc["price_close"] - 1
+                btc = btc.bfill().fillna(0)
                 os.makedirs(DATA_DIR, exist_ok=True)
                 btc.to_parquet(PARQUET_PATH)
                 print(f"  Sauvegarde: {PARQUET_PATH}")
+                print(f"  Colonnes: {len(btc.columns)} | Lignes: {len(btc)}")
                 return
         except ImportError:
             print("  yfinance non installe. Utilisation du dataset synthetique.")

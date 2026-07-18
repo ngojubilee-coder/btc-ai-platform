@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { streamChat, apiFetch, apiPost } from "@/lib/api";
 import { Send, Loader2, Bot, User, Sparkles, Copy, Check, Plus, MessageSquare, Trash2, Zap, Download, Eraser, ArrowDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -55,6 +55,13 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
+  const loadConversations = useCallback(async () => {
+    try {
+      const data = await apiFetch<Conversation[]>(`/api/chat/conversations/${userId}`);
+      setConversations(data || []);
+    } catch {}
+  }, [userId]);
+
   useEffect(() => {
     loadConversations();
     try {
@@ -64,7 +71,7 @@ export default function ChatPage() {
         if (p.prefs?.complexity) setComplexity(p.prefs.complexity);
       }
     } catch {}
-  }, []);
+  }, [loadConversations]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -84,13 +91,6 @@ export default function ChatPage() {
 
   function scrollToBottom() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }
-
-  async function loadConversations() {
-    try {
-      const data = await apiFetch<Conversation[]>(`/api/chat/conversations/${userId}`);
-      setConversations(data || []);
-    } catch {}
   }
 
   async function loadConversation(id: string) {

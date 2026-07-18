@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
 import { useDebounce } from "@/lib/hooks";
 import { Waves, Search, Loader2, ExternalLink } from "lucide-react";
@@ -63,15 +63,7 @@ export default function WhalesPage() {
     });
   }, []);
 
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    doSearch(debouncedSearch);
-  }, [debouncedSearch]);
-
-  async function doSearch(query?: string) {
+  const doSearch = useCallback(async (query?: string) => {
     const q = query ?? search;
     setLoading(true);
     setPage(0);
@@ -85,7 +77,15 @@ export default function WhalesPage() {
       setHasMore((results || []).length >= pageSize);
     }
     setLoading(false);
-  }
+  }, [search, pageSize]);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    doSearch(debouncedSearch);
+  }, [debouncedSearch, doSearch]);
 
   async function loadMore() {
     const next = page + 1;

@@ -60,6 +60,7 @@ export default function SettingsPage() {
     if (user) {
       setProfile({ name: user.user_metadata?.name || t("nav.analyst"), email: user.email || "" });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   async function handleChangePassword() {
