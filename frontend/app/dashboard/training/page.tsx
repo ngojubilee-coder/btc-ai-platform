@@ -32,6 +32,7 @@ interface TrainingStatus {
 export default function TrainingPage() {
   const [results, setResults] = useState<ModelResult[]>([]);
   const [status, setStatus] = useState<TrainingStatus | null>(null);
+  const [comparisons, setComparisons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [training, setTraining] = useState(false);
   const [health, setHealth] = useState<any>(null);
@@ -40,14 +41,16 @@ export default function TrainingPage() {
   const fetchResults = useCallback(async () => {
     setLoading(true);
     try {
-      const [h, s, r] = await Promise.all([
+      const [h, s, r, c] = await Promise.all([
         apiFetch<any>("/health").catch(() => null),
         apiFetch<any>("/api/training/status").catch(() => null),
         apiFetch<any>("/api/training/results?limit=10").catch(() => null),
+        apiFetch<any>("/api/training/comparisons").catch(() => null),
       ]);
       setHealth(h);
       setStatus(s);
       setResults(r?.results || []);
+      setComparisons(c?.comparisons || []);
     } catch {}
     setLoading(false);
   }, []);
@@ -314,6 +317,31 @@ export default function TrainingPage() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* CSV Comparisons */}
+      {comparisons.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-orange-400" />
+              Comparaisons CSV ({comparisons.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {comparisons.map((c, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg border border-border bg-secondary/50 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground font-mono">{c.filename}</p>
+                    <p className="text-xs text-muted-foreground">{c.modified?.split("T")[0] || "-"}</p>
+                  </div>
+                  <Badge variant="outline">CSV</Badge>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

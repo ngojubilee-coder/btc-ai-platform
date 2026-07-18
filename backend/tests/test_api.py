@@ -219,3 +219,40 @@ class TestTrainingAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert "error" in data
+
+    def test_training_results_empty_limit(self, client):
+        resp = client.get("/api/training/results?limit=0")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 0
+        assert data["results"] == []
+
+    def test_training_status_has_last(self, client):
+        resp = client.get("/api/training/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "last" in data["results"]
+
+    def test_training_models_has_files(self, client):
+        resp = client.get("/api/training/models")
+        assert resp.status_code == 200
+        data = resp.json()
+        for m in data["models"]:
+            assert "filename" in m
+            assert "size_mb" in m
+            assert "modified" in m
+
+    def test_training_comparisons_structure(self, client):
+        resp = client.get("/api/training/comparisons")
+        assert resp.status_code == 200
+        data = resp.json()
+        for c in data["comparisons"]:
+            assert "filename" in c
+            assert "modified" in c
+
+    def test_training_endpoints_in_root_list(self, client):
+        resp = client.get("/")
+        assert resp.status_code == 200
+        endpoints = resp.json()["endpoints"]
+        assert "/api/training/status" in endpoints
+        assert "/api/training/results" in endpoints

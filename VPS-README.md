@@ -21,7 +21,8 @@
 | `monitoring-vps.bat` | Statut systeme: ports, disque, config, modeles |
 | `backup-vps.bat` | Backup config + modeles + dataset en ZIP |
 | `update-vps.bat` | Git pull + mise a jour deps + tests |
-| `auto-train-vps.bat` | Entrainement automatique XGBoost + log |
+| `auto-train-vps.bat` | Entrainement automatique (arg: modele) + log |
+| `setup-scheduled-task.bat` | Planifie entrainement via Task Scheduler |
 
 ## URLs locales
 
@@ -52,6 +53,18 @@ python train.py --target target_return_5m  # Changer la target
 - **XGBoost** — Gradient Boosting, rapide, performant (recommande)
 - **Random Forest** — Robuste, bon pour baseline
 - **LSTM** — Deep Learning (TensorFlow/Keras), plus lent mais puissant
+
+### Entrainement automatique
+```bat
+:: Entrainement XGBoost avec log
+auto-train-vps.bat xgboost
+
+:: Comparaison tous modeles
+auto-train-vps.bat compare
+
+:: Planifier via Windows Task Scheduler
+setup-scheduled-task.bat
+```
 
 ## Configuration
 
@@ -91,6 +104,7 @@ btc-ai-platform/
   backup-vps.bat           :: Backup ZIP
   update-vps.bat           :: Mise a jour git + deps
   auto-train-vps.bat       :: Entrainement automatique + log
+  setup-scheduled-task.bat :: Planification Task Scheduler
   backend/
     train.py               :: Pipeline d'entrainement (--compare, --backtest)
     download_data.py       :: Generation dataset BTC
@@ -98,7 +112,7 @@ btc-ai-platform/
     api/training.py        :: Router API training (status, results, models)
     requirements.txt       :: Deps Python (incluant xgboost, sklearn)
     .env                   :: Configuration
-    tests/                 :: 83 tests unitaires
+    tests/                 :: 104 tests unitaires
   frontend/
     package.json
     .env.local             :: URL du backend

@@ -18,26 +18,37 @@ if exist ".venv\Scripts\activate.bat" (
     exit /b 1
 )
 
-echo  [i] Demarrage de l entrainement automatique...
-echo  [i] Modele: XGBoost + Backtest
+:: Argument: modele (xgboost, random_forest, lstm, ou compare)
+set "MODEL=%1"
+if "%MODEL%"=="" set "MODEL=xgboost"
+
+set "LOGFILE=%ROOT%data\training_log.txt"
+if not exist "%ROOT%data" mkdir "%ROOT%data"
+
+echo  [i] Modele: %MODEL%
 echo  [i] Heure de debut: %time%
+echo  [i] Log: %LOGFILE%
 echo.
 
-:: Entrainement XGBoost avec backtest
-python train.py --model xgboost --backtest
+echo [%date% %time%] === DEBUT entrainement %MODEL% === >> "%LOGFILE%"
+
+if "%MODEL%"=="compare" (
+    python train.py --compare --backtest
+) else (
+    python train.py --model %MODEL% --backtest
+)
+
 if %errorLevel% neq 0 (
-    echo  [!] Erreur lors de l entrainement XGBoost
+    echo [%date% %time%] [ECHEC] Entrainement %MODEL% - code erreur %errorLevel% >> "%LOGFILE%"
+    echo  [!] Erreur lors de l entrainement %MODEL%
     exit /b 1
 )
 
+echo [%date% %time%] [OK] Entrainement %MODEL% termine avec succes >> "%LOGFILE%"
 echo.
 echo  [i] Entrainement termine avec succes.
 echo  [i] Heure de fin: %time%
 echo.
-
-:: Log dans un fichier
-echo [%date% %time%] Entrainement XGBoost OK >> "%ROOT%data\training_log.txt"
-
 echo  ========================================
 echo  Entrainement automatique termine.
 echo  Log: data\training_log.txt
