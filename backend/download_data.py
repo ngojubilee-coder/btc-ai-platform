@@ -143,6 +143,15 @@ def main():
                 btc["macd"] = ema_12 - ema_26
                 btc["macd_signal"] = btc["macd"].ewm(span=9).mean()
                 btc["macd_hist"] = btc["macd"] - btc["macd_signal"]
+                sma_20 = btc["price_close"].rolling(20).mean()
+                std_20 = btc["price_close"].rolling(20).std()
+                btc["bb_upper"] = sma_20 + 2 * std_20
+                btc["bb_lower"] = sma_20 - 2 * std_20
+                btc["bb_width"] = (btc["bb_upper"] - btc["bb_lower"]) / (sma_20 + 1e-10)
+                btc["volatility_15m"] = btc["price_close"].pct_change().rolling(15).std()
+                btc["volatility_60m"] = btc["price_close"].pct_change().rolling(60).std()
+                btc["volume_sma_30"] = btc["volume"].rolling(30).mean()
+                btc["volume_ratio"] = btc["volume"] / (btc["volume_sma_30"] + 1e-10)
                 for horizon in [5, 15, 30, 60]:
                     btc[f"target_return_{horizon}m"] = btc["price_close"].shift(-horizon) / btc["price_close"] - 1
                 btc = btc.bfill().fillna(0)

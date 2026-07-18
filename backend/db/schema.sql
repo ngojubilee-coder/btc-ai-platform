@@ -353,3 +353,5 @@ CREATE TABLE IF NOT EXISTS reports (
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Authenticated can read reports" ON reports FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Authenticated can create reports" ON reports FOR INSERT TO authenticated USING (true);
+CREATE POLICY "Authenticated can update reports" ON reports FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Authenticated can delete reports" ON reports FOR DELETE TO authenticated USING (true);
