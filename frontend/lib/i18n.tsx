@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 
 export type Lang = "fr" | "en";
 
@@ -723,7 +723,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  const setLang = (newLang: Lang) => {
+  const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang);
     try {
       const stored = localStorage.getItem("btc-ai-prefs");
@@ -731,11 +731,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       p.lang = newLang;
       localStorage.setItem("btc-ai-prefs", JSON.stringify(p));
     } catch {}
-  };
+  }, []);
 
-  const t = (key: string): string => {
+  const t = useCallback((key: string): string => {
     return dictionaries[lang][key] ?? key;
-  };
+  }, [lang]);
 
   return (
     <I18nContext.Provider value={{ lang, setLang, t }}>

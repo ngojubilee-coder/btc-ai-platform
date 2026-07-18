@@ -32,6 +32,12 @@ class TestHealthRoot:
         assert "status" in data
         assert "components" in data
 
+    def test_health_has_components(self, client):
+        resp = client.get("/health")
+        data = resp.json()
+        components = data.get("components", {})
+        assert "duckdb" in components or "supabase" in components or "llm" in components
+
 
 # ─── Data API ───
 
@@ -140,8 +146,7 @@ class TestModelsAPI:
 
     def test_download_report_not_found(self, client):
         resp = client.get("/api/models/reports/fake-id-12345/download")
-        assert resp.status_code == 200  # Returns markdown error message
-        assert "not found" in resp.text.lower() or "error" in resp.text.lower()
+        assert resp.status_code in (404, 500)
 
 
 # ─── Whales API ───

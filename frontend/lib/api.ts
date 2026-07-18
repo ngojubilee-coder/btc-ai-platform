@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEFAULT_TIMEOUT = 30000;
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
   if (typeof window === "undefined") return {};
@@ -14,10 +15,13 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const authHeaders = await getAuthHeaders();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...options,
+      signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
         ...authHeaders,
@@ -25,7 +29,10 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       },
     });
   } catch (err: any) {
+    if (err.name === "AbortError") throw new Error("Request timeout");
     throw new Error(`Network error: ${err.message || "Unable to reach server"}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
   if (!res.ok) {
     let detail = res.statusText;
@@ -53,13 +60,19 @@ export async function apiPost<T>(path: string, body: any): Promise<T> {
 
 export async function apiFetchText(path: string): Promise<string> {
   const authHeaders = await getAuthHeaders();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT);
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
+      signal: controller.signal,
       headers: { ...authHeaders },
     });
   } catch (err: any) {
+    if (err.name === "AbortError") throw new Error("Request timeout");
     throw new Error(`Network error: ${err.message || "Unable to reach server"}`);
+  } finally {
+    clearTimeout(timeoutId);
   }
   if (!res.ok) {
     let detail = res.statusText;

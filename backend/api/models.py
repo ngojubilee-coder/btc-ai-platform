@@ -70,14 +70,16 @@ async def download_report(report_id: str):
         sb = get_supabase()
         res = sb.table("reports").select("*").eq("id", report_id).execute()
         if not res.data:
-            return f"# Report not found (id={report_id})"
+            raise HTTPException(status_code=404, detail="Report not found")
         r = res.data[0]
         content = r.get("content", "")
         if not content:
             content = f"# {r.get('title', 'Report')}\n\n*No content available.*"
         return content
+    except HTTPException:
+        raise
     except Exception as e:
-        return f"# Error retrieving report: {e}"
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/reports/generate")
