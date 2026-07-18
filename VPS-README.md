@@ -119,6 +119,7 @@ btc-ai-platform/
     app/dashboard/training/ :: Page dashboard entrainement
   data/
     btc_enriched_dataset_1m.parquet  :: Dataset
+    whale_wallets_list.csv           :: 211 wallets baleine connus
     models/                :: Modeles sauvegardes (.json, .keras)
     results/               :: Resultats JSON + CSV comparaison
     training_log.txt       :: Log entrainement automatique
