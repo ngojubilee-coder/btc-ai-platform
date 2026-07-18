@@ -123,14 +123,14 @@ async def health():
     except Exception as e:
         status["components"]["duckdb"] = {"status": "error", "error": str(e)}
 
-    # Check Supabase
+    # Check Database (SQLite)
     try:
-        from db.supabase_client import get_supabase
-        sb = get_supabase()
-        sb.table("profiles").select("id").limit(1).execute()
-        status["components"]["supabase"] = {"status": "ok"}
+        from db.sqlite_db import get_db
+        db = get_db()
+        db.execute("SELECT 1").fetchone()
+        status["components"]["database"] = {"status": "ok", "type": "sqlite"}
     except Exception as e:
-        status["components"]["supabase"] = {"status": "error", "error": str(e)}
+        status["components"]["database"] = {"status": "error", "error": str(e)}
 
     # Check LLM config
     _placeholders = {"your-gemini-key", "your-openai-key", "your-anthropic-key", "your-api-key", "placeholder", ""}

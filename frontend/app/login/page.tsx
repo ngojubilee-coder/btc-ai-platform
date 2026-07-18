@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/components/auth-provider";
+import { useAuth, isLocalMode, LOCAL_EMAIL, LOCAL_PASSWORD } from "@/components/auth-provider";
 import { useI18n } from "@/lib/i18n";
-import { Bitcoin, Mail, Lock, Loader2 } from "lucide-react";
+import { Bitcoin, Mail, Lock, Loader2, Info } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,9 +27,18 @@ export default function LoginPage() {
     setSubmitting(true);
     setError("");
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      router.push("/dashboard");
+      if (isLocalMode) {
+        if (email === LOCAL_EMAIL && password === LOCAL_PASSWORD) {
+          localStorage.setItem("btc-ai-local-auth", "true");
+          router.push("/dashboard");
+        } else {
+          setError("Invalid credentials. Use the local credentials shown below.");
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -42,9 +51,13 @@ export default function LoginPage() {
     setSubmitting(true);
     setError("");
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
-      setError(t("login.accountCreated"));
+      if (isLocalMode) {
+        setError("Sign-up is disabled in local mode. Use the credentials shown below.");
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setError(t("login.accountCreated"));
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -111,6 +124,17 @@ export default function LoginPage() {
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>
+          )}
+
+          {isLocalMode && (
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-xs text-blue-400">
+              <div className="flex items-center gap-2 font-medium mb-1">
+                <Info className="h-4 w-4" />
+                Mode Local (sans Supabase)
+              </div>
+              <p>Email: <code className="text-blue-300">{LOCAL_EMAIL}</code></p>
+              <p>Mot de passe: <code className="text-blue-300">{LOCAL_PASSWORD}</code></p>
+            </div>
           )}
 
           <div className="flex gap-3">

@@ -1,91 +1,305 @@
-"""Client Supabase + helpers DB."""
-from supabase import create_client, Client
-from core.config import settings
+"""Database client — SQLite implementation (replaces Supabase)."""
+import json
+from db.sqlite_db import get_db, init_db, _uuid, _row_to_dict
 
-_client: Client | None = None
+# Initialize DB on import
+init_db()
 
 
-def get_supabase() -> Client:
-    global _client
-    if _client is None:
-        _client = create_client(settings.supabase_url, settings.supabase_service_key or settings.supabase_key)
+class _TableQuery:
+    """Mimics Supabase table query builder for backward compatibility."""
+
+    def __init__(self, table: str):
+        self._table = table
+        self._wheres = []
+        self._order_by = None
+        self._order_desc = False
+        self._limit_val = None
+        self._offset_val = None
+
+    def eq(self, col: str, val):
+        self._wheres.append((col, "=", val))
+        return self
+
+    def neq(self, col: str, val):
+        self._wheres.append((col, "!=", val))
+        return self
+
+    def gte(self, col: str, val):
+        self._wheres.append((col, ">=", val))
+        return self
+
+    def lte(self, col: str, val):
+        self._wheres.append((col, "<=", val))
+        return self
+
+    def ilike(self, col: str, val):
+        self._wheres.append((col, "LIKE", val))
+        return self
+
+    def order(self, col: str, desc=False):
+        self._order_by = col
+        self._order_desc = desc
+        return self
+
+    def limit(self, n: int):
+        self._limit_val = n
+        return self
+
+    def range(self, start: int, end: int):
+        self._limit_val = end - start + 1
+        self._offset_val = start
+        return self
+
+    def execute(self):
+        db = get_db()
+        sql = f"SELECT * FROM {self._table}"
+        params = []
+        if self._wheres:
+            clauses = []
+            for col, op, val in self._wheres:
+                clauses.append(f"{col} {op} ?")
+                params.append(val)
+            sql += " WHERE " + " AND ".join(clauses)
+        if self._order_by:
+            sql += f" ORDER BY {self._order_by} {'DESC' if self._order_desc else 'ASC'}"
+        if self._limit_val:
+            sql += f" LIMIT {self._limit_val}"
+        if self._offset_val:
+            sql += f" OFFSET {self._offset_val}"
+        rows = db.execute(sql, params).fetchall()
+        return _Result([_row_to_dict(r) for r in rows])
+
+
+class _Result:
+    def __init__(self, data):
+        self.data = data
+
+
+class _InsertQuery:
+    def __init__(self, table: str, data: dict):
+        self._table = table
+        self._data = data
+
+    def execute(self):
+        db = get_db()
+        row = {}
+        for k, v in self._data.items():
+            if isinstance(v, (list, dict)):
+                row[k] = json.dumps(v)
+            elif v is None:
+                row[k] = None
+            else:
+                row[k] = v
+        if "id" not in row or not row["id"]:
+            row["id"] = _uuid()
+        cols = list(row.keys())
+        placeholders = ", ".join(["?"] * len(cols))
+        sql = f"INSERT INTO {self._table} ({', '.join(cols)}) VALUES ({placeholders})"
+        db.execute(sql, list(row.values()))
+        db.commit()
+        fetched = db.execute(f"SELECT * FROM {self._table} WHERE id = ?", [row["id"]]).fetchone()
+        return _Result([_row_to_dict(fetched)] if fetched else [])
+
+
+class _DeleteQuery:
+    def __init__(self, table: str):
+        self._table = table
+        self._wheres = []
+
+    def eq(self, col: str, val):
+        self._wheres.append((col, "=", val))
+        return self
+
+    def execute(self):
+        db = get_db()
+        sql = f"DELETE FROM {self._table}"
+        params = []
+        if self._wheres:
+            clauses = []
+            for col, op, val in self._wheres:
+                clauses.append(f"{col} {op} ?")
+                params.append(val)
+            sql += " WHERE " + " AND ".join(clauses)
+        db.execute(sql, params)
+        db.commit()
+        return _Result([])
+
+
+class _UpdateQuery:
+    def __init__(self, table: str, data: dict):
+        self._table = table
+        self._data = data
+        self._wheres = []
+
+    def eq(self, col: str, val):
+        self._wheres.append((col, "=", val))
+        return self
+
+    def execute(self):
+        db = get_db()
+        sets = []
+        params = []
+        for k, v in self._data.items():
+            if isinstance(v, (list, dict)):
+                sets.append(f"{k} = ?")
+                params.append(json.dumps(v))
+            else:
+                sets.append(f"{k} = ?")
+                params.append(v)
+        sql = f"UPDATE {self._table} SET " + ", ".join(sets)
+        if self._wheres:
+            clauses = []
+            for col, op, val in self._wheres:
+                clauses.append(f"{col} {op} ?")
+                params.append(val)
+            sql += " WHERE " + " AND ".join(clauses)
+        db.execute(sql, params)
+        db.commit()
+        return _Result([])
+
+
+class _DBClient:
+    """Mimics Supabase client API for backward compatibility."""
+
+    def table(self, name: str):
+        class _Table:
+            def select(self, *args):
+                return _TableQuery(name)
+
+            def insert(self, data: dict):
+                return _InsertQuery(name, data)
+
+            def delete(self):
+                return _DeleteQuery(name)
+
+            def update(self, data: dict):
+                return _UpdateQuery(name, data)
+
+        return _Table()
+
+    def rpc(self, fn_name: str, params: dict):
+        return _Result([])
+
+
+_client = _DBClient()
+
+
+def get_supabase() -> _DBClient:
+    """Return the DB client (SQLite backend, Supabase-compatible API)."""
     return _client
 
 
+# ─── Async helpers (same API as before) ───
+
 async def fetch_documents_by_type(doc_type: str, limit: int = 100) -> list[dict]:
-    sb = get_supabase()
-    res = sb.table("documents").select("*").eq("doc_type", doc_type).limit(limit).execute()
-    return res.data
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM documents WHERE doc_type = ? ORDER BY created_at DESC LIMIT ?",
+        [doc_type, limit],
+    ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 async def insert_document(doc: dict) -> dict:
-    sb = get_supabase()
-    res = sb.table("documents").insert(doc).execute()
-    return res.data[0] if res.data else {}
+    db = get_db()
+    row = {}
+    for k, v in doc.items():
+        if isinstance(v, (list, dict)):
+            row[k] = json.dumps(v)
+        else:
+            row[k] = v
+    if "id" not in row or not row["id"]:
+        row["id"] = _uuid()
+    cols = list(row.keys())
+    placeholders = ", ".join(["?"] * len(cols))
+    db.execute(f"INSERT INTO documents ({', '.join(cols)}) VALUES ({placeholders})", list(row.values()))
+    db.commit()
+    fetched = db.execute("SELECT * FROM documents WHERE id = ?", [row["id"]]).fetchone()
+    return _row_to_dict(fetched) or {}
 
 
 async def search_similar_documents(embedding: list[float], top_k: int = 5, doc_type: str | None = None) -> list[dict]:
-    sb = get_supabase()
-    params = {"query_embedding": embedding, "match_count": top_k}
+    db = get_db()
     if doc_type:
-        params["filter_type"] = doc_type
-    res = sb.rpc("match_documents", params).execute()
-    return res.data
+        rows = db.execute(
+            "SELECT * FROM documents WHERE doc_type = ? ORDER BY created_at DESC LIMIT ?",
+            [doc_type, top_k],
+        ).fetchall()
+    else:
+        rows = db.execute(
+            "SELECT * FROM documents ORDER BY created_at DESC LIMIT ?",
+            [top_k],
+        ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 async def save_message(conversation_id: str, role: str, content: str, llm_model: str = "", tools_called: list = None) -> dict:
-    sb = get_supabase()
-    res = sb.table("messages").insert({
-        "conversation_id": conversation_id,
-        "role": role,
-        "content": content,
-        "llm_model": llm_model,
-        "tools_called": tools_called or [],
-    }).execute()
-    return res.data[0] if res.data else {}
+    db = get_db()
+    msg_id = _uuid()
+    db.execute(
+        "INSERT INTO messages (id, conversation_id, role, content, llm_model, tools_called) VALUES (?, ?, ?, ?, ?, ?)",
+        [msg_id, conversation_id, role, content, llm_model, json.dumps(tools_called or [])],
+    )
+    db.commit()
+    fetched = db.execute("SELECT * FROM messages WHERE id = ?", [msg_id]).fetchone()
+    return _row_to_dict(fetched) or {}
 
 
 async def create_conversation(user_id: str, title: str = "New conversation", asset: str = "BTC") -> dict:
-    sb = get_supabase()
-    res = sb.table("conversations").insert({
-        "user_id": user_id,
-        "title": title,
-        "asset": asset,
-    }).execute()
-    return res.data[0] if res.data else {}
+    db = get_db()
+    conv_id = _uuid()
+    db.execute(
+        "INSERT INTO conversations (id, user_id, title, asset) VALUES (?, ?, ?, ?)",
+        [conv_id, user_id, title, asset],
+    )
+    db.commit()
+    fetched = db.execute("SELECT * FROM conversations WHERE id = ?", [conv_id]).fetchone()
+    return _row_to_dict(fetched) or {}
 
 
 async def get_conversations(user_id: str, limit: int = 50) -> list[dict]:
-    sb = get_supabase()
-    res = sb.table("conversations").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
-    return res.data
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+        [user_id, limit],
+    ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 async def get_messages(conversation_id: str) -> list[dict]:
-    sb = get_supabase()
-    res = sb.table("messages").select("*").eq("conversation_id", conversation_id).order("created_at").execute()
-    return res.data
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+        [conversation_id],
+    ).fetchall()
+    return [_row_to_dict(r) for r in rows]
 
 
 async def delete_conversation(conversation_id: str) -> bool:
-    sb = get_supabase()
-    sb.table("messages").delete().eq("conversation_id", conversation_id).execute()
-    sb.table("conversations").delete().eq("id", conversation_id).execute()
+    db = get_db()
+    db.execute("DELETE FROM messages WHERE conversation_id = ?", [conversation_id])
+    db.execute("DELETE FROM conversations WHERE id = ?", [conversation_id])
+    db.commit()
     return True
 
 
 async def save_report(title: str, report_type: str, status: str = "completed", content: str = "") -> dict:
-    sb = get_supabase()
-    res = sb.table("reports").insert({
-        "title": title,
-        "report_type": report_type,
-        "status": status,
-        "content": content,
-    }).execute()
-    return res.data[0] if res.data else {}
+    db = get_db()
+    report_id = _uuid()
+    db.execute(
+        "INSERT INTO reports (id, title, report_type, status, content) VALUES (?, ?, ?, ?, ?)",
+        [report_id, title, report_type, status, content],
+    )
+    db.commit()
+    fetched = db.execute("SELECT * FROM reports WHERE id = ?", [report_id]).fetchone()
+    return _row_to_dict(fetched) or {}
 
 
 async def get_reports(limit: int = 20) -> list[dict]:
-    sb = get_supabase()
-    res = sb.table("reports").select("*").order("created_at", desc=True).limit(limit).execute()
-    return res.data
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM reports ORDER BY created_at DESC LIMIT ?",
+        [limit],
+    ).fetchall()
+    return [_row_to_dict(r) for r in rows]
