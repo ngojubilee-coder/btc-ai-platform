@@ -215,7 +215,7 @@ export default function TrainingPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Resultats d entrainement
+            Resultats d entrainement ({results.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -224,6 +224,7 @@ export default function TrainingPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
+                    <th className="text-left py-2 px-3 text-muted-foreground">Date</th>
                     <th className="text-left py-2 px-3 text-muted-foreground">Modele</th>
                     <th className="text-right py-2 px-3 text-muted-foreground">Accuracy</th>
                     <th className="text-right py-2 px-3 text-muted-foreground">F1</th>
@@ -233,20 +234,32 @@ export default function TrainingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((r, i) => (
-                    <tr key={i} className="border-b border-border/50 hover:bg-secondary/30">
-                      <td className="py-2 px-3 font-medium text-foreground">{r.model}</td>
-                      <td className="text-right py-2 px-3 text-foreground">{(r.accuracy * 100).toFixed(2)}%</td>
-                      <td className="text-right py-2 px-3 text-foreground">{r.f1 ? r.f1.toFixed(4) : "N/A"}</td>
-                      <td className="text-right py-2 px-3 text-foreground">
-                        {r.backtest ? `${r.backtest.win_rate.toFixed(2)}%` : "N/A"}
-                      </td>
-                      <td className={`text-right py-2 px-3 ${r.backtest && r.backtest.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {r.backtest ? `${r.backtest.pnl >= 0 ? "+" : ""}${r.backtest.pnl}` : "N/A"}
-                      </td>
-                      <td className="text-right py-2 px-3 text-muted-foreground">{r.train_time_sec}s</td>
-                    </tr>
-                  ))}
+                  {results.map((r: any, i) => {
+                    const m = r.metrics || r;
+                    const bt = r.backtest || m.backtest;
+                    const ts = r.timestamp ? r.timestamp.split("T")[0] : "-";
+                    return (
+                      <tr key={i} className="border-b border-border/50 hover:bg-secondary/30">
+                        <td className="py-2 px-3 text-muted-foreground text-xs">{ts}</td>
+                        <td className="py-2 px-3 font-medium text-foreground">{m.model || r.model || "-"}</td>
+                        <td className="text-right py-2 px-3 text-foreground">
+                          {m.accuracy ? `${(m.accuracy * 100).toFixed(2)}%` : "N/A"}
+                        </td>
+                        <td className="text-right py-2 px-3 text-foreground">
+                          {m.f1 ? m.f1.toFixed(4) : "N/A"}
+                        </td>
+                        <td className="text-right py-2 px-3 text-foreground">
+                          {bt ? `${bt.win_rate.toFixed(2)}%` : "N/A"}
+                        </td>
+                        <td className={`text-right py-2 px-3 ${bt && bt.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {bt ? `${bt.pnl >= 0 ? "+" : ""}${bt.pnl}` : "N/A"}
+                        </td>
+                        <td className="text-right py-2 px-3 text-muted-foreground">
+                          {m.train_time_sec ? `${m.train_time_sec.toFixed(1)}s` : "N/A"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -258,6 +271,52 @@ export default function TrainingPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Last result details */}
+      {status?.results?.last && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Dernier resultat detaille
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground text-xs">Modele</p>
+                <p className="font-medium text-foreground">{status.results.last.metrics?.model || status.results.last.model || "-"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Accuracy</p>
+                <p className="font-medium text-foreground">{status.results.last.metrics?.accuracy ? (status.results.last.metrics.accuracy * 100).toFixed(2) + "%" : "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Win Rate</p>
+                <p className="font-medium text-foreground">{status.results.last.backtest?.win_rate ? status.results.last.backtest.win_rate.toFixed(2) + "%" : "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">PnL</p>
+                <p className={`font-medium ${status.results.last.backtest?.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {status.results.last.backtest?.pnl ? `${status.results.last.backtest.pnl >= 0 ? "+" : ""}${status.results.last.backtest.pnl}` : "N/A"}
+                </p>
+              </div>
+            </div>
+            {status.results.last.metrics?.top_features && (
+              <div className="mt-4">
+                <p className="text-muted-foreground text-xs mb-2">Top features:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(status.results.last.metrics.top_features).slice(0, 8).map(([k, v]: any) => (
+                    <Badge key={k} variant="outline" className="text-xs font-mono">
+                      {k}: {typeof v === "number" ? v.toFixed(4) : v}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

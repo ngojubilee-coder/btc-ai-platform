@@ -5,11 +5,18 @@ Usage:
     python download_data.py --real       # Telecharger les vraies donnees BTC (si disponible)
 """
 import argparse
+import io
 import os
+import sys
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+
+# Forcer UTF-8 sur Windows
+if sys.platform == "win32" and __name__ == "__main__":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 load_dotenv()
 

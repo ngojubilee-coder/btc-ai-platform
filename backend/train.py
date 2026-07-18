@@ -16,7 +16,7 @@ import sys
 import time
 
 # Forcer UTF-8 sur Windows pour les caracteres Unicode
-if sys.platform == "win32":
+if sys.platform == "win32" and __name__ == "__main__":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 from datetime import datetime
