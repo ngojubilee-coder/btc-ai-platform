@@ -170,3 +170,52 @@ class TestWhalesAPI:
         assert resp.status_code == 200
         data = resp.json()
         assert isinstance(data, list)
+
+
+# ─── Training API ───
+
+class TestTrainingAPI:
+    def test_training_status(self, client):
+        resp = client.get("/api/training/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "dataset" in data
+        assert "models" in data
+        assert "results" in data
+        assert "exists" in data["dataset"]
+        assert "count" in data["models"]
+
+    def test_training_results(self, client):
+        resp = client.get("/api/training/results")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "results" in data
+        assert "total" in data
+        assert isinstance(data["results"], list)
+
+    def test_training_results_limit(self, client):
+        resp = client.get("/api/training/results?limit=2")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] <= 2
+
+    def test_training_models(self, client):
+        resp = client.get("/api/training/models")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "models" in data
+        assert "total" in data
+        assert isinstance(data["models"], list)
+
+    def test_training_comparisons(self, client):
+        resp = client.get("/api/training/comparisons")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "comparisons" in data
+        assert "total" in data
+
+    def test_training_result_not_found(self, client):
+        resp = client.get("/api/training/results/nonexistent_file.json")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "error" in data

@@ -19,6 +19,9 @@
 | `prepare-data.bat` | Genere le dataset BTC synthetique |
 | `health-check-vps.bat` | Verifie backend, frontend, API, dataset, modeles |
 | `monitoring-vps.bat` | Statut systeme: ports, disque, config, modeles |
+| `backup-vps.bat` | Backup config + modeles + dataset en ZIP |
+| `update-vps.bat` | Git pull + mise a jour deps + tests |
+| `auto-train-vps.bat` | Entrainement automatique XGBoost + log |
 
 ## URLs locales
 
@@ -81,16 +84,21 @@ btc-ai-platform/
   install-vps.bat          :: Installation complete
   start-vps.bat            :: Demarrage backend + frontend
   stop-vps.bat             :: Arret des services
-  train-vps.bat            :: Menu d'entrainement
+  train-vps.bat            :: Menu d'entrainement (6 options)
   prepare-data.bat         :: Generation dataset
   health-check-vps.bat     :: Verification systeme
   monitoring-vps.bat       :: Monitoring complet
+  backup-vps.bat           :: Backup ZIP
+  update-vps.bat           :: Mise a jour git + deps
+  auto-train-vps.bat       :: Entrainement automatique + log
   backend/
     train.py               :: Pipeline d'entrainement (--compare, --backtest)
     download_data.py       :: Generation dataset BTC
     main.py                :: API FastAPI
+    api/training.py        :: Router API training (status, results, models)
     requirements.txt       :: Deps Python (incluant xgboost, sklearn)
     .env                   :: Configuration
+    tests/                 :: 83 tests unitaires
   frontend/
     package.json
     .env.local             :: URL du backend
@@ -99,6 +107,7 @@ btc-ai-platform/
     btc_enriched_dataset_1m.parquet  :: Dataset
     models/                :: Modeles sauvegardes (.json, .keras)
     results/               :: Resultats JSON + CSV comparaison
+    training_log.txt       :: Log entrainement automatique
 ```
 
 ## Verification systeme
