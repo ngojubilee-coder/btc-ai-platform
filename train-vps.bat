@@ -1,40 +1,39 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 >nul 2>&1
 title BTC AI Platform - Entrainement
 color 0E
 
 echo.
-echo  ╔══════════════════════════════════════════════════════╗
-echo  ║     BTC AI PLATFORM - PIPELINE D'ENTRAINEMENT         ║
-echo  ╚══════════════════════════════════════════════════════╝
+echo  === BTC AI PLATFORM - PIPELINE D ENTRAINEMENT ===
 echo.
 
 set "ROOT=%~dp0"
 cd /d "%ROOT%backend"
 
-:: Activer l'environnement virtuel
+:: Activer l environnement virtuel
 if exist ".venv\Scripts\activate.bat" (
     call .venv\Scripts\activate.bat
 ) else (
-    echo  [!] Environnement virtuel non trouve. Lancez install-vps.bat d'abord.
+    echo  [!] Environnement virtuel non trouve. Lancez install-vps.bat.
     pause
     exit /b 1
 )
 
-:: Installer les dependances d'entrainement
-echo  [i] Verification des dependances d'entrainement...
+:: Installer les dependances d entrainement
+echo  [i] Verification des dependances d entrainement...
 pip install xgboost scikit-learn --quiet 2>nul
 python -c "import tensorflow" 2>nul
 if %errorLevel% neq 0 (
-    echo  [i] TensorFlow non installe. Installation (peut prendre quelques minutes)...
+    echo  [i] TensorFlow non installe. Installation - peut prendre quelques minutes...
     pip install tensorflow --quiet
 )
 
 :: Menu de selection
 echo  Selectionnez le modele a entrainer:
-echo    1. XGBoost (recommande - rapide et performant)
-echo    2. Random Forest (robuste)
-echo    3. LSTM Deep Learning (TensorFlow - lent)
+echo    1. XGBoost - recommande, rapide et performant
+echo    2. Random Forest - robuste
+echo    3. LSTM Deep Learning - TensorFlow, lent
 echo    4. Comparaison tous modeles + CSV
 echo    5. Lister les modeles disponibles
 echo    6. Verifier le dataset
