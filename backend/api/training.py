@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from core.config import settings
 
@@ -40,9 +40,11 @@ async def list_training_results(limit: int = 20):
 @router.get("/training/results/{filename}")
 async def get_training_result(filename: str):
     """Get a specific training result by filename."""
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
     filepath = os.path.join(RESULTS_DIR, filename)
     if not os.path.isfile(filepath):
-        return {"error": "Result not found"}
+        raise HTTPException(status_code=404, detail="Result not found")
 
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)

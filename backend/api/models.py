@@ -10,6 +10,7 @@ router = APIRouter(prefix="/models", tags=["models"])
 @router.get("/")
 async def list_models(limit: int = 50):
     try:
+        limit = max(1, min(int(limit), 500))
         sb = get_supabase()
         res = sb.table("model_runs").select("*").order("created_at", desc=True).limit(limit).execute()
         return res.data

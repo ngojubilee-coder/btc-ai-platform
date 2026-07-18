@@ -51,6 +51,8 @@ async def get_correlations(target: str = "target_return_15m", top_n: int = 20):
 @router.get("/sample")
 async def sample_data(n: int = 100, offset: int = 0):
     try:
+        n = max(1, min(int(n), 10000))
+        offset = max(0, int(offset))
         return duckdb_service.sample_data(n, offset)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -60,6 +62,7 @@ async def sample_data(n: int = 100, offset: int = 0):
 async def time_range_data(start: str, end: str, columns: str | None = None, limit: int = 1000):
     """Query data within a time range. Columns is comma-separated."""
     try:
+        limit = max(1, min(int(limit), 10000))
         cols = columns.split(",") if columns else None
         return duckdb_service.query_time_range(start, end, cols, limit)
     except Exception as e:

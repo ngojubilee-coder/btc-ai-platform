@@ -17,6 +17,8 @@ async def refresh():
 @router.get("/search")
 async def search(start_date: str = None, end_date: str = None, event_type: str = None, limit: int = 20, offset: int = 0):
     try:
+        limit = max(1, min(int(limit), 500))
+        offset = max(0, int(offset))
         return await search_news_events(start_date, end_date, event_type, limit, offset)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -26,6 +28,7 @@ async def search(start_date: str = None, end_date: str = None, event_type: str =
 async def correlate(date: str = None, price_change_pct: float = 0.0, limit: int = 10):
     """Get news events correlated with price movements."""
     try:
+        limit = max(1, min(int(limit), 500))
         if date:
             return await correlate_price_movement(date, price_change_pct)
         sb = get_supabase()

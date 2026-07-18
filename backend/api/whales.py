@@ -21,6 +21,8 @@ async def list_wallets(
 ):
     """List known whale wallets with optional filters."""
     try:
+        limit = max(1, min(int(limit), 500))
+        offset = max(0, int(offset))
         return get_all_wallets(category, entity, min_btc, limit, offset)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -39,6 +41,7 @@ async def whale_stats():
 async def top_whales(limit: int = 20):
     """Top whale wallets by estimated BTC holdings."""
     try:
+        limit = max(1, min(int(limit), 500))
         return get_top_whales(limit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -48,6 +51,8 @@ async def top_whales(limit: int = 20):
 async def search(q: str, limit: int = 20, offset: int = 0):
     """Search wallets by address, name, or entity."""
     try:
+        limit = max(1, min(int(limit), 500))
+        offset = max(0, int(offset))
         return search_wallets(q, limit, offset)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

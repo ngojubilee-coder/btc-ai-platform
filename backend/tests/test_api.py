@@ -216,9 +216,15 @@ class TestTrainingAPI:
 
     def test_training_result_not_found(self, client):
         resp = client.get("/api/training/results/nonexistent_file.json")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "error" in data
+        assert resp.status_code == 404
+
+    def test_training_result_path_traversal_blocked(self, client):
+        resp = client.get("/api/training/results/..%2F..%2Fetc%2Fpasswd")
+        assert resp.status_code in (400, 404)
+
+    def test_training_result_slash_in_filename_blocked(self, client):
+        resp = client.get("/api/training/results/sub/dir/file.json")
+        assert resp.status_code in (400, 404)
 
     def test_training_results_empty_limit(self, client):
         resp = client.get("/api/training/results?limit=0")
@@ -256,3 +262,25 @@ class TestTrainingAPI:
         endpoints = resp.json()["endpoints"]
         assert "/api/training/status" in endpoints
         assert "/api/training/results" in endpoints
+        assert "/api/training/results/{filename}" in endpoints
+        assert "/api/data/query" in endpoints
+        assert "/api/whales/{address}" in endpoints
+        assert "/api/data/column/{column}/stats" in endpoints
+
+    def test_whales_limit_clamped(self, client):
+        resp = client.get("/api/whales/?limit=-5")
+        assert resp.status_code == 200
+
+    def test_whales_top_limit_clamped(self, client):
+        resp = client.get("/api/whales/top?limit=99999")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) <= 500
+
+    def test_data_sample_limit_clamped(self, client):
+        resp = client.get("/api/data/sample?n=-10")
+        assert resp.status_code == 200
+
+    def test_news_search_limit_clamped(self, client):
+        resp = client.get("/api/news/search?limit=0")
+        assert resp.status_code in (200, 500)
