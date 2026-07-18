@@ -21,3 +21,5 @@ data/training_log.txt
 package-lock.json
 backups/
 .netlify/
+*.db-shm
+*.db-wal
