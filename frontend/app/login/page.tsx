@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth, isLocalMode, LOCAL_EMAIL, LOCAL_PASSWORD } from "@/components/auth-provider";
+import { LOCAL_USER } from "@/components/auth-provider";
 import { useI18n } from "@/lib/i18n";
 import { Bitcoin, Mail, Lock, Loader2, Info } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, setLocalUser } = useAuth();
   const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +31,7 @@ export default function LoginPage() {
       if (isLocalMode) {
         if (email === LOCAL_EMAIL && password === LOCAL_PASSWORD) {
           localStorage.setItem("btc-ai-local-auth", "true");
+          setLocalUser(LOCAL_USER);
           router.push("/dashboard");
         } else {
           setError("Invalid credentials. Use the local credentials shown below.");

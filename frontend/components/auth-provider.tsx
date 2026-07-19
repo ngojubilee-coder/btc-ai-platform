@@ -28,6 +28,7 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   isLocalMode: boolean;
+  setLocalUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -36,6 +37,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   isLocalMode: false,
+  setLocalUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -81,8 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  const setLocalUser = (u: User | null) => {
+    setUser(u);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut, isLocalMode }}>
+    <AuthContext.Provider value={{ user, session, loading, signOut, isLocalMode, setLocalUser }}>
       {children}
     </AuthContext.Provider>
   );
@@ -92,4 +98,4 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-export { isLocalMode, LOCAL_EMAIL, LOCAL_PASSWORD };
+export { isLocalMode, LOCAL_EMAIL, LOCAL_PASSWORD, LOCAL_USER };
