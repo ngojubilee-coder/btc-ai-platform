@@ -142,12 +142,18 @@ async def fetch_newsapi_news(limit: int = 50) -> list[dict]:
 
 
 async def index_news_batch(news_list: list[dict]) -> int:
-    """Index news events into the database with embeddings."""
+    """Index news events into the database with embeddings (deduplicated by title)."""
+    from db.sqlite_db import get_db
+    db = get_db()
     count = 0
     for news in news_list:
         try:
+            title = news["title"]
+            existing = db.execute("SELECT id FROM news_events WHERE title = ?", [title]).fetchone()
+            if existing:
+                continue
             await rag_engine.index_news(
-                title=news["title"],
+                title=title,
                 summary=news["summary"],
                 content=news["content"],
                 source=news["source"],

@@ -108,6 +108,7 @@ class LLMRouter:
         tools: list[dict] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
+        tool_context: str = "",
     ) -> AsyncIterator[str]:
         chain = self._get_fallback_chain(complexity)
         last_error = None
@@ -126,7 +127,7 @@ class LLMRouter:
                         yield chunk
                     return
                 elif model == "local":
-                    async for chunk in self._stream_local(messages, system_prompt):
+                    async for chunk in self._stream_local(messages, system_prompt, tool_context):
                         yield chunk
                     return
                 else:
@@ -261,16 +262,16 @@ class LLMRouter:
                         if data.get("message", {}).get("content"):
                             yield data["message"]["content"]
 
-    async def _call_local(self, messages: list[dict], system_prompt: str = "") -> dict:
+    async def _call_local(self, messages: list[dict], system_prompt: str = "", tool_context: str = "") -> dict:
         """Local fallback — generates a helpful response without external LLM."""
         user_msg = messages[-1].get("content", "") if messages else ""
-        response = self._generate_local_response(user_msg, system_prompt)
+        response = self._generate_local_response(user_msg, system_prompt, tool_context)
         return {"model": "local", "content": response, "tool_calls": []}
 
-    async def _stream_local(self, messages: list[dict], system_prompt: str = "") -> AsyncIterator[str]:
+    async def _stream_local(self, messages: list[dict], system_prompt: str = "", tool_context: str = "") -> AsyncIterator[str]:
         """Stream local fallback response token by token."""
         user_msg = messages[-1].get("content", "") if messages else ""
-        response = self._generate_local_response(user_msg, system_prompt)
+        response = self._generate_local_response(user_msg, system_prompt, tool_context)
         words = response.split(" ")
         for i, word in enumerate(words):
             yield word + (" " if i < len(words) - 1 else "")
@@ -278,9 +279,14 @@ class LLMRouter:
             await asyncio.sleep(0.02)
 
     @staticmethod
-    def _generate_local_response(user_msg: str, system_prompt: str = "") -> str:
-        """Generate a context-aware local response without external LLM."""
+    def _generate_local_response(user_msg: str, system_prompt: str = "", tool_context: str = "") -> str:
+        """Generate a context-aware local response using real tool data when available."""
         msg_lower = user_msg.lower()
+        L = "EN" in system_prompt[:200] and "FR" not in system_prompt[:200]
+
+        # If we have real tool data, use it to build a rich response
+        if tool_context:
+            return LLMRouter._format_tool_response(user_msg, tool_context, L)
 
         if any(kw in msg_lower for kw in ["bonjour", "hello", "salut", "hi", "hey"]):
             return ("Bonjour ! Je suis l'analyste quantitatif BTC AI Platform. "
@@ -288,40 +294,6 @@ class LLMRouter:
                     "les whales (211 wallets), et les actualités crypto. "
                     "Note: Le LLM externe n'est pas configuré — mode local actif. "
                     "Posez-moi une question sur le dataset, les whales, ou les corrélations !")
-
-        if any(kw in msg_lower for kw in ["dataset", "data", "données", "lignes", "colonnes"]):
-            return ("📊 **Dataset BTC**\n\n"
-                    "- **Lignes**: 100 000\n"
-                    "- **Colonnes**: 31 (prix, indicateurs techniques, targets)\n"
-                    "- **Période**: 2023-01-01 à 2023-03-11\n"
-                    "- **Format**: Parquet (29.6 MB)\n"
-                    "- **Indicateurs**: SMA, EMA, RSI, MACD, Bollinger Bands, volatilité\n\n"
-                    "Utilisez le Data Explorer pour explorer les données en détail.")
-
-        if any(kw in msg_lower for kw in ["whale", "baleine", "wallet"]):
-            return ("🐋 **Whale Tracking**\n\n"
-                    "- **Total wallets**: 211\n"
-                    "- **Catégories**: Exchange, Mining, Fund, Individual, Unknown\n"
-                    "- **Source**: whale_wallets_list.csv\n\n"
-                    "Visitez la page Whales pour voir le classement complet.")
-
-        if any(kw in msg_lower for kw in ["correlation", "corrélation", "feature"]):
-            return ("📈 **Corrélations**\n\n"
-                    "Les corrélations entre features et target_return_15m sont disponibles "
-                    "dans la page Correlations. Les features les plus corrélées incluent "
-                    "généralement RSI, MACD, et les bandes de Bollinger.")
-
-        if any(kw in msg_lower for kw in ["model", "modèle", "training", "entraînement"]):
-            return ("🤖 **Modèles ML**\n\n"
-                    "Le système supporte XGBoost, RandomForest, et LSTM. "
-                    "Visitez la page Training pour lancer un entraînement, "
-                    "ou la page Models pour comparer les modèles existants.")
-
-        if any(kw in msg_lower for kw in ["news", "actualité", "article"]):
-            return ("📰 **Actualités Crypto**\n\n"
-                    "Le système agrège des actualités de CoinDesk, Cointelegraph, "
-                    "Bitcoin Magazine, The Block, et Federal Reserve. "
-                    "Visitez la page News pour voir les dernières actualités.")
 
         return (f"J'ai reçu votre message: \"{user_msg[:200]}\"\n\n"
                 "⚠️ **Mode local actif** — Aucun LLM externe n'est configuré (Gemini, Claude, OpenAI, Ollama).\n\n"
@@ -333,6 +305,182 @@ class LLMRouter:
                 "- 📰 Actualités crypto\n\n"
                 "Configurez une clé API valide (GEMINI_API_KEY, ANTHROPIC_API_KEY, ou OPENAI_API_KEY) "
                 "pour activer le LLM complet.")
+
+    @staticmethod
+    def _format_tool_response(user_msg: str, tool_context: str, is_en: bool) -> str:
+        """Format a rich response using real tool data from tool_context."""
+        import json as _json
+        import re as _re
+        L = is_en
+        parts = []
+
+        # Extract tool sections from tool_context
+        # Sections look like: [DATASET STATISTICS]\n{json}\n
+        sections = _re.findall(r'\[([^\]]+)\]\n(.*?)(?=\n\[|\Z)', tool_context, _re.DOTALL)
+
+        for section_name, section_data in sections:
+            section_name = section_name.strip()
+            try:
+                data = _json.loads(section_data.strip())
+            except Exception:
+                # Not JSON, include as-is
+                parts.append(f"**{section_name}**\n```\n{section_data.strip()[:500]}\n```")
+                continue
+
+            if "DATASET STATISTICS" in section_name.upper() or "STATISTIQUES" in section_name.upper():
+                parts.append(LLMRouter._format_dataset_stats(data, L))
+
+            elif "SCHEMA" in section_name.upper():
+                parts.append(LLMRouter._format_schema(data, L))
+
+            elif "CORRELATION" in section_name.upper():
+                parts.append(LLMRouter._format_correlations(data, L))
+
+            elif "WHALE" in section_name.upper() and "STATS" in section_name.upper():
+                parts.append(LLMRouter._format_whale_stats(data, L))
+
+            elif "WHALE" in section_name.upper() and "TOP" in section_name.upper():
+                parts.append(LLMRouter._format_top_whales(data, L))
+
+            elif "WHALE" in section_name.upper() and "SEARCH" in section_name.upper():
+                parts.append(LLMRouter._format_whale_search(data, L))
+
+            elif "NEWS" in section_name.upper() or "ACTUALIT" in section_name.upper():
+                parts.append(LLMRouter._format_news(data, L))
+
+            elif "SAMPLE" in section_name.upper() or "ÉCHANTILLON" in section_name.upper():
+                parts.append(LLMRouter._format_sample(data, L))
+
+            else:
+                # Generic formatting
+                parts.append(f"**{section_name}**\n```\n{_json.dumps(data, indent=2, ensure_ascii=False)[:800]}\n```")
+
+        if not parts:
+            return (f"J'ai reçu votre message: \"{user_msg[:200]}\"\n\n"
+                    "⚠️ **Mode local actif** — Aucun LLM externe n'est configuré.\n\n"
+                    "Posez-moi une question sur le dataset, les whales, les corrélations, ou les actualités !")
+
+        header = f"📊 **Analyse** — {user_msg[:100]}\n\n" if not L else f"� **Analysis** — {user_msg[:100]}\n\n"
+        footer = ("\n\n---\n\n⚠️ *Mode local actif — configurez une clé API (GEMINI_API_KEY, ANTHROPIC_API_KEY, ou OPENAI_API_KEY) pour des analyses plus approfondies.*"
+                  if not L else
+                  "\n\n---\n\n⚠️ *Local mode active — configure an API key (GEMINI_API_KEY, ANTHROPIC_API_KEY, or OPENAI_API_KEY) for deeper analysis.*")
+        return header + "\n\n".join(parts) + footer
+
+    @staticmethod
+    def _format_dataset_stats(data: dict, L: bool) -> str:
+        """Format dataset statistics as Markdown table."""
+        rows = data.get("n_rows", 0)
+        cols = data.get("n_columns", 0)
+        size = data.get("file_size_mb", 0)
+        min_d = data.get("min_timestamp", "N/A")
+        max_d = data.get("max_timestamp", "N/A")
+        title = "Dataset Statistics" if L else "Statistiques du Dataset"
+        return (f"### {title}\n\n"
+                f"| {'Metric' if L else 'Métrique'} | {'Value' if L else 'Valeur'} |\n"
+                f"|----------|--------|\n"
+                f"| {'Total rows' if L else 'Lignes totales'} | {rows:,} |\n"
+                f"| {'Columns' if L else 'Colonnes'} | {cols} |\n"
+                f"| {'File size' if L else 'Taille fichier'} | {size} MB |\n"
+                f"| {'Min date' if L else 'Date min'} | {min_d} |\n"
+                f"| {'Max date' if L else 'Date max'} | {max_d} |")
+
+    @staticmethod
+    def _format_schema(data: dict, L: bool) -> str:
+        """Format schema as Markdown table."""
+        columns = data.get("columns", [])
+        title = "Dataset Schema" if L else "Schema du Dataset"
+        lines = [f"### {title}\n\n| {'Column' if L else 'Colonne'} | Type |\n|--------|------|"]
+        for c in columns[:30]:
+            lines.append(f"| {c.get('name', '?')} | {c.get('type', '?')} |")
+        if len(columns) > 30:
+            lines.append(f"| ... | *{len(columns) - 30} {'more columns' if L else 'colonnes de plus'}* |")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_correlations(data: list, L: bool) -> str:
+        """Format correlations as Markdown table."""
+        if not data:
+            return f"### {'Top Correlations' if L else 'Top Corrélations'}\n\n*{'No data' if L else 'Pas de données'}*"
+        title = "Top Correlations (target_return_15m)" if L else "Top Corrélations (target_return_15m)"
+        lines = [f"### {title}\n\n| Feature | {'Correlation' if L else 'Corrélation'} |\n|---------|------------|"]
+        for c in data[:15]:
+            feat = c.get("feature", "?")
+            corr = c.get("correlation", 0)
+            lines.append(f"| {feat} | {corr:+.4f} |")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_whale_stats(data: dict, L: bool) -> str:
+        """Format whale stats as Markdown."""
+        title = "Whale Statistics" if L else "Statistiques Whale"
+        total = data.get("total_wallets", 0)
+        total_btc = data.get("total_btc", 0)
+        cats = data.get("categories", {})
+        cat_lines = "\n".join(f"- **{k}**: {v}" for k, v in sorted(cats.items(), key=lambda x: -x[1]))
+        return (f"### {title}\n\n"
+                f"| {'Metric' if L else 'Métrique'} | {'Value' if L else 'Valeur'} |\n"
+                f"|----------|--------|\n"
+                f"| {'Total wallets' if L else 'Total wallets'} | {total} |\n"
+                f"| {'Total BTC' if L else 'Total BTC'} | {total_btc:,.2f} |\n\n"
+                f"**{'Categories' if L else 'Catégories'}:**\n{cat_lines}")
+
+    @staticmethod
+    def _format_top_whales(data: list, L: bool) -> str:
+        """Format top whales as Markdown table."""
+        if not data:
+            return f"### {'Top Whales' if L else 'Top Whales'}\n\n*{'No data' if L else 'Pas de données'}*"
+        title = "Top Whales by BTC Holdings" if L else "Top Whales par BTC"
+        lines = [f"### {title}\n\n| # | {'Name' if L else 'Nom'} | Entity | BTC | {'Category' if L else 'Catégorie'} |\n|---|------|--------|-----|------------|"]
+        for i, w in enumerate(data[:10], 1):
+            name = w.get("name", "Unknown")[:20]
+            entity = w.get("entity", "Unknown")[:15]
+            btc = w.get("estimated_btc", 0) or 0
+            cat = w.get("category", "?")
+            lines.append(f"| {i} | {name} | {entity} | {btc:,.2f} | {cat} |")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_whale_search(data: list, L: bool) -> str:
+        """Format whale search results."""
+        if not data:
+            return f"### {'Whale Search' if L else 'Recherche Whale'}\n\n*{'No results' if L else 'Aucun résultat'}*"
+        title = "Whale Search Results" if L else "Résultats Recherche Whale"
+        lines = [f"### {title}\n\n| {'Name' if L else 'Nom'} | Entity | BTC | Address |\n|------|--------|-----|---------|"]
+        for w in data[:5]:
+            name = w.get("name", "Unknown")[:20]
+            entity = w.get("entity", "Unknown")[:15]
+            btc = w.get("estimated_btc", 0) or 0
+            addr = w.get("address", "")[:20]
+            lines.append(f"| {name} | {entity} | {btc:,.2f} | {addr}... |")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_news(data: list, L: bool) -> str:
+        """Format news articles as Markdown list."""
+        if not data:
+            return f"### {'Recent News' if L else 'Actualités Récentes'}\n\n*{'No news found' if L else 'Aucune actualité trouvée'}*"
+        title = "Recent News" if L else "Actualités Récentes"
+        lines = [f"### {title}\n"]
+        for n in data[:8]:
+            n_title = n.get("title", "Unknown")[:80]
+            source = n.get("source", "?")
+            etype = n.get("event_type", "market")
+            date = n.get("event_date", "")[:10]
+            lines.append(f"- **[{etype.upper()}]** {n_title} — *{source}* ({date})")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_sample(data: list, L: bool) -> str:
+        """Format data sample as Markdown."""
+        if not data:
+            return f"### {'Data Sample' if L else 'Échantillon'}\n\n*{'No data' if L else 'Pas de données'}*"
+        title = "Data Sample (first 5 rows)" if L else "Échantillon (5 premières lignes)"
+        cols = list(data[0].keys())[:8]
+        lines = [f"### {title}\n\n| {' | '.join(cols)} |", f"| {' | '.join(['---'] * len(cols))} |"]
+        for row in data[:5]:
+            vals = [str(row.get(c, ""))[:20] for c in cols]
+            lines.append(f"| {' | '.join(vals)} |")
+        return "\n".join(lines)
 
 
 llm_router = LLMRouter()

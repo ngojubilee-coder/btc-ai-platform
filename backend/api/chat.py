@@ -107,12 +107,12 @@ async def chat_stream(body: ChatRequest):
                 tool_context += f"\n[{('DATASET STATISTICS' if L else 'STATISTIQUES DATASET')}]\n{result}\n"
                 tools_summary.append("get_dataset_stats")
 
-            if any(kw in msg_lower for kw in ["schema", "colonne", "colonnes", "structure", "quelles features", "quels colonnes", "columns", "what columns", "which features", "field"]):
+            if any(kw in msg_lower for kw in ["schema", "colonne", "colonnes", "structure", "quels colonnes", "columns", "what columns", "field"]):
                 result = await execute_tool("get_dataset_schema", {})
                 tool_context += f"\n[{('DATASET SCHEMA' if L else 'SCHEMA DATASET')}]\n{result}\n"
                 tools_summary.append("get_dataset_schema")
 
-            if any(kw in msg_lower for kw in ["correlation", "corrél", "influence", "importante", "feature la plus", "correlate", "correlation", "most important feature", "impact"]):
+            if any(kw in msg_lower for kw in ["correlation", "corrél", "influence", "importante", "feature la plus", "quelles features", "which features", "correlate", "correlation", "most important feature", "impact"]):
                 result = await execute_tool("get_correlations", {"top_n": 20})
                 tool_context += f"\n[{('TOP CORRELATIONS' if L else 'TOP CORRELATIONS')}]\n{result}\n"
                 tools_summary.append("get_correlations")
@@ -172,6 +172,7 @@ async def chat_stream(body: ChatRequest):
                 complexity=body.complexity,
                 temperature=0.7,
                 max_tokens=4096,
+                tool_context=tool_context,
             ):
                 full_response += chunk
                 yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
