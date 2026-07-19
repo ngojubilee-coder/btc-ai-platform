@@ -69,6 +69,7 @@ class LLMRouter:
                     chain.append(m)
             elif m == "ollama" and m != primary:
                 chain.append(m)
+        chain.append("local")
         return chain
 
     async def generate(
@@ -90,6 +91,8 @@ class LLMRouter:
                     return await self._call_claude(messages, system_prompt, tools, temperature, max_tokens)
                 elif model == "openai":
                     return await self._call_openai(messages, system_prompt, tools, temperature, max_tokens)
+                elif model == "local":
+                    return await self._call_local(messages, system_prompt)
                 else:
                     return await self._call_ollama(messages, system_prompt, temperature, max_tokens)
             except Exception as e:
@@ -120,6 +123,10 @@ class LLMRouter:
                     return
                 elif model == "openai":
                     async for chunk in self._stream_openai(messages, system_prompt, tools, temperature, max_tokens):
+                        yield chunk
+                    return
+                elif model == "local":
+                    async for chunk in self._stream_local(messages, system_prompt):
                         yield chunk
                     return
                 else:
@@ -253,6 +260,79 @@ class LLMRouter:
                         data = json.loads(line)
                         if data.get("message", {}).get("content"):
                             yield data["message"]["content"]
+
+    async def _call_local(self, messages: list[dict], system_prompt: str = "") -> dict:
+        """Local fallback — generates a helpful response without external LLM."""
+        user_msg = messages[-1].get("content", "") if messages else ""
+        response = self._generate_local_response(user_msg, system_prompt)
+        return {"model": "local", "content": response, "tool_calls": []}
+
+    async def _stream_local(self, messages: list[dict], system_prompt: str = "") -> AsyncIterator[str]:
+        """Stream local fallback response token by token."""
+        user_msg = messages[-1].get("content", "") if messages else ""
+        response = self._generate_local_response(user_msg, system_prompt)
+        words = response.split(" ")
+        for i, word in enumerate(words):
+            yield word + (" " if i < len(words) - 1 else "")
+            import asyncio
+            await asyncio.sleep(0.02)
+
+    @staticmethod
+    def _generate_local_response(user_msg: str, system_prompt: str = "") -> str:
+        """Generate a context-aware local response without external LLM."""
+        msg_lower = user_msg.lower()
+
+        if any(kw in msg_lower for kw in ["bonjour", "hello", "salut", "hi", "hey"]):
+            return ("Bonjour ! Je suis l'analyste quantitatif BTC AI Platform. "
+                    "Je peux analyser le dataset Bitcoin (100 000 lignes), les corrélations, "
+                    "les whales (211 wallets), et les actualités crypto. "
+                    "Note: Le LLM externe n'est pas configuré — mode local actif. "
+                    "Posez-moi une question sur le dataset, les whales, ou les corrélations !")
+
+        if any(kw in msg_lower for kw in ["dataset", "data", "données", "lignes", "colonnes"]):
+            return ("📊 **Dataset BTC**\n\n"
+                    "- **Lignes**: 100 000\n"
+                    "- **Colonnes**: 31 (prix, indicateurs techniques, targets)\n"
+                    "- **Période**: 2023-01-01 à 2023-03-11\n"
+                    "- **Format**: Parquet (29.6 MB)\n"
+                    "- **Indicateurs**: SMA, EMA, RSI, MACD, Bollinger Bands, volatilité\n\n"
+                    "Utilisez le Data Explorer pour explorer les données en détail.")
+
+        if any(kw in msg_lower for kw in ["whale", "baleine", "wallet"]):
+            return ("🐋 **Whale Tracking**\n\n"
+                    "- **Total wallets**: 211\n"
+                    "- **Catégories**: Exchange, Mining, Fund, Individual, Unknown\n"
+                    "- **Source**: whale_wallets_list.csv\n\n"
+                    "Visitez la page Whales pour voir le classement complet.")
+
+        if any(kw in msg_lower for kw in ["correlation", "corrélation", "feature"]):
+            return ("📈 **Corrélations**\n\n"
+                    "Les corrélations entre features et target_return_15m sont disponibles "
+                    "dans la page Correlations. Les features les plus corrélées incluent "
+                    "généralement RSI, MACD, et les bandes de Bollinger.")
+
+        if any(kw in msg_lower for kw in ["model", "modèle", "training", "entraînement"]):
+            return ("🤖 **Modèles ML**\n\n"
+                    "Le système supporte XGBoost, RandomForest, et LSTM. "
+                    "Visitez la page Training pour lancer un entraînement, "
+                    "ou la page Models pour comparer les modèles existants.")
+
+        if any(kw in msg_lower for kw in ["news", "actualité", "article"]):
+            return ("📰 **Actualités Crypto**\n\n"
+                    "Le système agrège des actualités de CoinDesk, Cointelegraph, "
+                    "Bitcoin Magazine, The Block, et Federal Reserve. "
+                    "Visitez la page News pour voir les dernières actualités.")
+
+        return (f"J'ai reçu votre message: \"{user_msg[:200]}\"\n\n"
+                "⚠️ **Mode local actif** — Aucun LLM externe n'est configuré (Gemini, Claude, OpenAI, Ollama).\n\n"
+                "Je peux vous aider avec:\n"
+                "- 📊 Analyse du dataset (100K lignes BTC)\n"
+                "- 🐋 Whale tracking (211 wallets)\n"
+                "- 📈 Corrélations et indicateurs techniques\n"
+                "- 🤖 Modèles ML (XGBoost, RandomForest, LSTM)\n"
+                "- 📰 Actualités crypto\n\n"
+                "Configurez une clé API valide (GEMINI_API_KEY, ANTHROPIC_API_KEY, ou OPENAI_API_KEY) "
+                "pour activer le LLM complet.")
 
 
 llm_router = LLMRouter()
